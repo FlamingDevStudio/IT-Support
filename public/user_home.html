@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT Support Ticket Submission</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; }
+        h1, p { text-align: center; }
+        .header, .footer { padding: 10px 20px; text-align: center; background-color: #4CAF50; color: white; }
+        .form-container { display: flex; justify-content: center; padding: 20px; }
+        form { background-color: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); width: 300px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], textarea, select { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        input[type="submit"] { width: 100%; padding: 10px; border: none; background-color: #4CAF50; color: white; cursor: pointer; border-radius: 4px; }
+        input[type="submit"]:hover { background-color: #45a049; }
+        .temp-message { text-align: center; color: green; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Welcome to the IT Support System</h1>
+        <button id="logoutButton">Logout</button>
+    </div>
+    <div class="form-container">
+        <form id="ticketForm">
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" required>
+
+            <label for="description">Description:</label>
+            <textarea id="description" name="description" required rows="4" style="resize: none;"></textarea>
+
+            <label for="location">Location:</label>
+            <select id="location" name="location" required>
+                <option value="Library">Library</option>
+                <option value="Cafeteria">Cafeteria</option>
+                <option value="Main Office">Main Office</option>
+                <option value="Gymnasium">Gymnasium</option>
+                <option value="Room 101">Room 101</option>
+                <option value="Room 102">Room 102</option>
+                <option value="Room 201">Room 201</option>
+                <option value="Room 202">Room 202</option>
+            </select>
+
+            <label for="priority">Priority:</label>
+            <select id="priority" name="priority" required>
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Urgent">Urgent</option>
+            </select>
+
+            <input type="hidden" id="status" name="status" value="Open">
+
+            <input type="submit" value="Submit Ticket">
+        </form>
+    </div>
+    <div class="footer">
+        <p>IT Support System © 2024</p>
+    </div>
+    <script>
+        window.onload = function() {
+            const tempMessageDiv = document.createElement('div');
+            tempMessageDiv.className = 'temp-message';
+            tempMessageDiv.textContent = 'You are logged in!';
+            document.body.insertBefore(tempMessageDiv, document.body.firstChild);
+
+            setTimeout(() => {
+                document.body.removeChild(tempMessageDiv);
+            }, 3000);
+        };
+
+        document.getElementById('ticketForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var formData = new URLSearchParams(new FormData(this)).toString();
+            fetch('/submit_ticket', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message === "Ticket submitted successfully!") {
+                    alert('Ticket submitted successfully!');
+                } else {
+                    alert('Failed to submit ticket: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Error submitting ticket: ' + error.message);
+            });
+        });
+
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            fetch('/logout', {
+                method: 'GET',
+                credentials: 'include'
+            })
+            .then(response => {
+                if (response.ok) {
+                    window.location.href = '/login.html'; // Redirect to login after logout
+                } else {
+                    throw new Error('Failed to log out');
+                }
+            })
+            .catch(error => {
+                alert('Error logging out: ' + error.message);
+            });
+        });
+    </script>
+</body>
+</html>

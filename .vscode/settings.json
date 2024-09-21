@@ -1,0 +1,11 @@
+{
+    "sqltools.connections": [
+        {
+            "previewLimit": 200,
+            "driver": "SQLite",
+            "database": "${workspaceFolder:ICT SBA (V4)}/database.db",
+            "name": "it_support"
+        }
+    ],
+    "sqltools.useNodeRuntime": true
+}

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT-Support Home</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+        }
+        .header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+        }
+        .navbar a {
+            float: left;
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 20px;
+            text-decoration: none;
+        }
+        .navbar a:hover {
+            background-color: #ddd;
+            color: black;
+        }
+        .main {
+            margin: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .content {
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        .tickets {
+            margin-top: 20px;
+        }
+        .ticket {
+            background: #e9e9e9;
+            border: 1px solid #d3d3d3;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        p {
+            color: #666;
+            line-height: 1.5;
+        }
+        .footer {
+            text-align: center;
+            padding: 10px 20px;
+            background-color: #ddd;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Welcome to the IT-Support Dashboard</h1>
+        <button id="logoutButton">Logout</button>
+    </div>
+    <div class="navbar">
+        <a href="#" onclick="showSection('dashboard')">Dashboard</a>
+        <a href="#" onclick="showSection('tickets')">Tickets</a>
+        <a href="#" onclick="showSection('alerts')">System Alerts</a>
+        <a href="#" onclick="showSection('network')">Network Settings</a>
+    </div>
+    <div class="main">
+        <div id="dashboard" class="content active">
+            <h2>Dashboard Overview</h2>
+            <p>Welcome to your IT-Support dashboard. Here you can manage tickets, view system alerts, and update network settings.</p>
+        </div>
+        <div id="tickets" class="content">
+            <h3>Tickets</h3>
+            <div id="ticketsContainer">
+                <!-- Tickets will be loaded here dynamically -->
+            </div>
+        </div>
+        <div id="alerts" class="content">
+            <h3>System Alerts</h3>
+            <p>View real-time alerts and notifications about system performance and security issues.</p>
+        </div>
+        <div id="network" class="content">
+            <h3>Network Settings</h3>
+            <p>Update and configure network settings including, but not limited to, IP management, DNS configurations, and firewall rules.</p>
+        </div>
+    </div>
+    <div class="footer">
+        <p>IT-Support © 2024</p>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Register the logout button event listener
+            document.getElementById('logoutButton').addEventListener('click', function() {
+                fetch('/logout', {
+                    method: 'GET',
+                    credentials: 'include' // Ensures cookies, such as session IDs, are sent with the request
+                })
+                .then(response => {
+                    if (response.ok) {
+                        window.location.href = '/login.html'; // Redirect to login after logout
+                    } else {
+                        throw new Error('Logout failed: ' + response.statusText);
+                    }
+                })
+                .catch(error => {
+                    alert('Error logging out: ' + error.message);
+                });
+            });
+
+            // Fetch tickets immediately after the page loads
+            fetchTickets(); 
+        });
+
+        function fetchTickets() {
+    fetch('/tickets')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch tickets: ' + response.statusText);
+            }
+            return response.json();
+        })
+        .then(tickets => {
+            console.log('Tickets fetched:', tickets); // Log the tickets to see what they look like
+            const container = document.getElementById('ticketsContainer');
+            container.innerHTML = ''; // Clear previous content
+            if (tickets.length === 0) {
+                container.innerHTML = '<p>No tickets to display.</p>';
+            } else {
+                tickets.forEach(ticket => {
+                    console.log('Processing ticket:', ticket); // Log each ticket
+                    if (!ticket.title || !ticket.description || !ticket.priority || !ticket.status) {
+                        console.error('Undefined properties in ticket:', ticket);
+                    }
+                    const ticketDiv = document.createElement('div');
+                    ticketDiv.className = 'ticket';
+                    ticketDiv.innerHTML = `
+                        <h4>${ticket.title || 'No Title'}</h4>
+                        <p>${ticket.description || 'No Description'}</p>
+                        <p>Priority: ${ticket.priority || 'No Priority'} | Status: ${ticket.status || 'No Status'}</p>
+                    `;
+                    container.appendChild(ticketDiv);
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching tickets:', error);
+            document.getElementById('ticketsContainer').innerHTML = '<p>Error loading tickets.</p>';
+        });
+}
+
+        function showSection(sectionId) {
+            const sections = document.querySelectorAll('.content');
+            sections.forEach(section => {
+                section.style.display = 'none'; // Hide all sections
+            });
+            const targetSection = document.getElementById(sectionId);
+            if (targetSection) {
+                targetSection.style.display = 'block'; // Show the requested section
+            }
+        }
+    </script>
+</body>
+</html>

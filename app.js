@@ -1,0 +1,129 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const sqlite3 = require('sqlite3').verbose();
+const session = require('express-session');
+const app = express();
+const port = 3000;
+
+// Connect to SQLite database
+const db = new sqlite3.Database('./database.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+    if (err) {
+        console.error('Error when connecting to the database:', err.message);
+    } else {
+        console.log('Connected to the SQLite database.');
+    }
+});
+
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json()); // Ensuring JSON parsing is enabled.
+app.use(express.static('public'));
+
+// Configure express-session
+app.use(session({
+    secret: '1023520827Bob!',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false, httpOnly: true } // Set secure to true in production with HTTPS
+}));
+
+// Ticket submission route
+app.post('/submit_ticket', (req, res) => {
+    console.log(req.session.user)
+    if (!req.session.user) {
+        return res.status(401).json({ message: "Unauthorized access." });
+    }
+    const { title, description, location, priority, status } = req.body;
+    const userId = req.session.user.userId; // Correctly access userId
+    if (title && description && location && priority && status) {
+        db.run('INSERT INTO Tickets(title, description, location, priority, status, userId) VALUES(?, ?, ?, ?, ?, ?)',
+               [title, description, location, priority, status, userId], function(err) {
+            if (err) {
+                console.error('Error inserting ticket:', err.message);
+                res.status(500).json({ message: "Failed to submit ticket." });
+            } else {
+                res.json({ message: "Ticket submitted successfully!", ticketId: this.lastID });
+            }
+        });
+    } else {
+        res.status(400).json({ message: 'All fields are required.' });
+    }
+});
+
+// Sign-up route
+app.post('/signup', (req, res) => {
+    const { username, password, role } = req.body;
+    const validRoles = ['admin', 'user', 'it_support'];
+    const userRole = validRoles.includes(role.toLowerCase()) ? role : 'user';
+
+    if (username && password && username.length >= 5 && password.length >= 8) {
+        db.run('INSERT INTO Users(username, password, role) VALUES(?, ?, ?)', [username, password, userRole], (err) => {
+            if (err) {
+                console.error(err.message);
+                res.status(500).send("Failed to create new user.");
+            } else {
+                res.redirect('/login.html');
+            }
+        });
+    } else {
+        res.status(400).send('Username must be at least 5 characters and password at least 8 characters long.');
+    }
+});
+
+// Login route
+app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+    db.get('SELECT user_id, username, role, password FROM Users WHERE username = ? AND password = ?', [username, password], (err, user) => {
+        if (err) {
+            console.error(err.message);
+            res.status(500).send("An error occurred during login.");
+        } else if (user) {
+            req.session.user = { userId: user.user_id, role: user.role };
+            switch (user.role) {
+                case 'admin':
+                    res.redirect('/admin_home.html');
+                    break;
+                case 'it_support':
+                    res.redirect('/it_support_home.html');
+                    break;
+                default:
+                    res.redirect('/user_home.html');
+            }
+        } else {
+            res.status(401).send('Invalid username or password');
+        }
+    });
+});
+
+// Logout route
+app.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Failed to destroy session:', err);
+            res.status(500).send('Failed to log out.');
+        } else {
+            res.redirect('/login.html');
+        }
+    });
+});
+
+// Get tickets route
+app.get('/tickets', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ message: "Unauthorized access." });
+    }
+
+    db.all("SELECT * FROM Tickets", (err, tickets) => {
+        if (err) {
+            console.error('Error fetching tickets:', err.message);
+            res.status(500).json({ message: "Failed to retrieve tickets." });
+        } else {
+            res.setHeader('Content-Type', 'application/json');
+            res.json.tickets
+            console.log(tickets)
+    }
+    });
+});
+
+app.listen(port, () => {
+    console.log(`Server running at http://localhost:${port}/`);
+});

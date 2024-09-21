@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signup Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 300px;
+            padding: 20px;
+            background-color: white;
+            margin: 50px auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            display: inline-block;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            border-radius: 5px; /* Added border radius as in login page */
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 14px 20px;
+            margin: 8px 0;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            border-radius: 5px; /* Added border radius */
+            font-size: 16px; /* Match font size from login page */
+        }
+        button:hover {
+            opacity: 0.8;
+        }
+        .alt-btn {
+            background-color: #6c757d; /* Secondary button color from login page */
+        }
+        .error-message {
+            color: red;
+            font-size: 0.8em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Signup Form</h2>
+        <form id="signupForm" action="/signup" method="POST">
+            <div class="error-message" id="errorMsg"></div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+
+            <label for="role">Role:</label>
+            <select id="role" name="role" required>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+                <option value="it_support">IT-Support</option>
+            </select>
+
+            <button type="submit">Sign Up</button>
+            <button type="button" class="alt-btn" onclick="window.location.href='/login.html';">Already a member? Log in</button>
+        </form>
+    </div>
+</body>
+</html>
