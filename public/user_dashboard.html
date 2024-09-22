@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - IT Support System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <ul>
+                    <li><a href="#" id="ticketsLink">My Tickets</a></li>
+                    <li><a href="#" id="equipmentLink">Borrow Equipment</a></li>
+                    <li><a href="#" id="knowledgeBaseLink">Knowledge Base</a></li>
+                    <li><a href="#" id="logoutLink">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>Welcome, <span id="username"></span>!</h1>
+        
+        <div id="ticketsSection" class="card">
+            <h2>My Tickets</h2>
+            <button id="newTicketBtn" class="btn">New Ticket</button>
+            <div id="ticketsList"></div>
+        </div>
+
+        <div id="equipmentSection" class="card" style="display:none;">
+            <h2>Borrow Equipment</h2>
+            <div id="equipmentList"></div>
+        </div>
+
+        <div id="knowledgeBaseSection" class="card" style="display:none;">
+            <h2>Knowledge Base</h2>
+            <div id="articlesList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Load user info
+        fetch('/user_info')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('username').textContent = data.username;
+            })
+            .catch(error => console.error('Error:', error));
+
+        // Navigation
+        document.getElementById('ticketsLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showSection('ticketsSection');
+            loadTickets();
+        });
+
+        document.getElementById('equipmentLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showSection('equipmentSection');
+            loadEquipment();
+        });
+
+        document.getElementById('knowledgeBaseLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            showSection('knowledgeBaseSection');
+            loadKnowledgeBase();
+        });
+
+        document.getElementById('logoutLink').addEventListener('click', function(e) {
+            e.preventDefault();
+            fetch('/logout', { method: 'POST' })
+                .then(() => window.location.href = 'login.html')
+                .catch(error => console.error('Error:', error));
+        });
+
+        function showSection(sectionId) {
+            document.getElementById('ticketsSection').style.display = 'none';
+            document.getElementById('equipmentSection').style.display = 'none';
+            document.getElementById('knowledgeBaseSection').style.display = 'none';
+            document.getElementById(sectionId).style.display = 'block';
+        }
+
+        // Load tickets
+        function loadTickets() {
+            fetch('/tickets')
+                .then(response => response.json())
+                .then(data => {
+                    const ticketsList = document.getElementById('ticketsList');
+                    ticketsList.innerHTML = '<table><tr><th>Title</th><th>Status</th><th>Priority</th><th>Category</th></tr>';
+                    data.tickets.forEach(ticket => {
+                        ticketsList.innerHTML += `
+                            <tr>
+                                <td>${ticket.Title}</td>
+                                <td>${ticket.Status}</td>
+                                <td>${ticket.Priority}</td>
+                                <td>${ticket.Category}</td>
+                            </tr>
+                        `;
+                    });
+                    ticketsList.innerHTML += '</table>';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Load equipment
+        function loadEquipment() {
+            fetch('/equipment')
+                .then(response => response.json())
+                .then(data => {
+                    const equipmentList = document.getElementById('equipmentList');
+                    equipmentList.innerHTML = '<table><tr><th>Name</th><th>Description</th><th>Available</th><th>Action</th></tr>';
+                    data.forEach(item => {
+                        equipmentList.innerHTML += `
+                            <tr>
+                                <td>${item.Name}</td>
+                                <td>${item.Description}</td>
+                                <td>${item.AvailableStock}</td>
+                                <td><button onclick="borrowEquipment(${item.EquipmentID})">Borrow</button></td>
+                            </tr>
+                        `;
+                    });
+                    equipmentList.innerHTML += '</table>';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Load knowledge base
+        function loadKnowledgeBase() {
+            fetch('/knowledge_base')
+                .then(response => response.json())
+                .then(data => {
+                    const articlesList = document.getElementById('articlesList');
+                    articlesList.innerHTML = '<table><tr><th>Title</th><th>Category</th><th>Author</th><th>Action</th></tr>';
+                    data.articles.forEach(article => {
+                        articlesList.innerHTML += `
+                            <tr>
+                                <td>${article.Title}</td>
+                                <td>${article.Category}</td>
+                                <td>${article.AuthorName}</td>
+                                <td><button onclick="viewArticle(${article.ArticleID})">View</button></td>
+                            </tr>
+                        `;
+                    });
+                    articlesList.innerHTML += '</table>';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // New ticket form
+        document.getElementById('newTicketBtn').addEventListener('click', function() {
+            const form = document.createElement('form');
+            form.innerHTML = `
+                <input type="text" id="ticketTitle" placeholder="Title" required>
+                <textarea id="ticketDescription" placeholder="Description" required></textarea>
+                <select id="ticketPriority" required>
+                    <option value="">Select Priority</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                </select>
+                <select id="ticketCategory" required>
+                    <option value="">Select Category</option>
+                    <option value="Hardware">Hardware</option>
+                    <option value="Software">Software</option>
+                    <option value="Network">Network</option>
+                    <option value="Other">Other</option>
+                </select>
+                <button type="submit" class="btn">Submit Ticket</button>
+            `;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const title = document.getElementById('ticketTitle').value;
+                const description = document.getElementById('ticketDescription').value;
+                const priority = document.getElementById('ticketPriority').value;
+                const category = document.getElementById('ticketCategory').value;
+                fetch('/submit_ticket', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ Title: title, Description: description, Priority: priority, Category: category })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    loadTickets();
+                })
+                .catch(error => console.error('Error:', error));
+            });
+            document.getElementById('ticketsSection').appendChild(form);
+        });
+
+        function borrowEquipment(equipmentId) {
+            const quantity = prompt('Enter quantity to borrow:');
+            if (quantity) {
+                fetch('/borrow_equipment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ EquipmentID: equipmentId, Quantity: parseInt(quantity) })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    loadEquipment();
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        }
+
+        function viewArticle(articleId) {
+            fetch(`/knowledge_base/${articleId}`)
+                .then(response => response.json())
+                .then(article => {
+                    const articleView = document.createElement('div');
+                    articleView.innerHTML = `
+                        <h3>${article.Title}</h3>
+                        <p><strong>Category:</strong> ${article.Category}</p>
+                        <p><strong>Author:</strong> ${article.AuthorName}</p>
+                        <p>${article.Content}</p>
+                        <button onclick="this.parentElement.remove()">Close</button>
+                    `;
+                    document.getElementById('knowledgeBaseSection').appendChild(articleView);
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Initial load
+        loadTickets();
+    </script>
+</body>
+</html>
