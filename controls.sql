@@ -40,3 +40,4 @@ CREATE TABLE IF NOT EXISTS EquipmentBorrowing (
     FOREIGN KEY (UserID) REFERENCES Users(user_id)
 );
 
+delete from tickets

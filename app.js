@@ -25,28 +25,6 @@ app.use(session({
     cookie: { secure: false, httpOnly: true } // Set secure to true in production with HTTPS
 }));
 
-// Ticket submission route
-app.post('/submit_ticket', (req, res) => {
-    if (!req.session.user) {
-        return res.status(401).json({ message: "Unauthorized access." });
-    }
-    const { title, description, location, priority, status } = req.body;
-    const userId = req.session.user.userId;
-    if (title && description && location && priority && status) {
-        db.run('INSERT INTO Tickets(title, description, location, priority, status, userId) VALUES(?, ?, ?, ?, ?, ?)',
-               [title, description, location, priority, status, userId], function(err) {
-            if (err) {
-                console.error('Error inserting ticket:', err.message);
-                res.status(500).json({ message: "Failed to submit ticket." });
-            } else {
-                res.json({ message: "Ticket submitted successfully!", ticketId: this.lastID });
-            }
-        });
-    } else {
-        res.status(400).json({ message: 'All fields are required.' });
-    }
-});
-
 // Sign-up route
 app.post('/signup', (req, res) => {
     const { username, password, role } = req.body;
@@ -104,6 +82,28 @@ app.get('/logout', (req, res) => {
     });
 });
 
+// Ticket submission route
+app.post('/submit_ticket', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ message: "Unauthorized access." });
+    }
+    const { title, description, location, priority, status } = req.body;
+    const userId = req.session.user.userId;
+    if (title && description && location && priority && status) {
+        db.run('INSERT INTO Tickets(title, description, location, priority, status, userId) VALUES(?, ?, ?, ?, ?, ?)',
+               [title, description, location, priority, status, userId], function(err) {
+            if (err) {
+                console.error('Error inserting ticket:', err.message);
+                res.status(500).json({ message: "Failed to submit ticket." });
+            } else {
+                res.json({ message: "Ticket submitted successfully!", ticketId: this.lastID });
+            }
+        });
+    } else {
+        res.status(400).json({ message: 'All fields are required.' });
+    }
+});
+
 // Get tickets route
 app.get('/tickets', (req, res) => {
     if (!req.session.user) {
@@ -116,6 +116,52 @@ app.get('/tickets', (req, res) => {
             res.status(500).json({ message: "Failed to retrieve tickets." });
         } else {
             res.json({ tickets }); // Corrected syntax
+        }
+    });
+});
+
+// Edit ticket route
+app.put('/edit_ticket/:ticketId', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ message: "Unauthorized access." });
+    }
+    const { ticketId } = req.params;
+    const { title, description, location, priority, status } = req.body;
+    if (title && description && location && priority && status) {
+        db.run('UPDATE Tickets SET title = ?, description = ?, location = ?, priority = ?, status = ? WHERE ticketId = ?',
+               [title, description, location, priority, status, ticketId], function(err) {
+            if (err) {
+                console.error('Error updating ticket:', err.message);
+                res.status(500).json({ message: "Failed to update ticket." });
+            } else {
+                if (this.changes > 0) {
+                    res.json({ message: "Ticket updated successfully!" });
+                } else {
+                    res.status(404).json({ message: "No ticket found or you do not have permission to edit this ticket." });
+                }
+            }
+        });
+    } else {
+        res.status(400).json({ message: 'All fields are required.' });
+    }
+});
+
+// Delete ticket route
+app.delete('/delete_ticket/:ticketId', (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ message: "Unauthorized access." });
+    }
+    const { ticketId } = req.params;
+    db.run('DELETE FROM Tickets WHERE ticketId = ?', [ticketId], function(err) {
+        if (err) {
+            console.error('Error deleting ticket:', err.message);
+            res.status(500).json({ message: "Failed to delete ticket." });
+        } else {
+            if (this.changes > 0) {
+                res.json({ message: "Ticket deleted successfully!" });
+            } else {
+                res.status(404).json({ message: "No ticket found or you do not have permission to delete this ticket." });
+            }
         }
     });
 });

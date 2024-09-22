@@ -54,6 +54,11 @@
             padding: 10px;
             margin-top: 5px;
             border-radius: 5px;
+            position: relative;
+        }
+        .ticket button {
+            padding: 5px 10px;
+            margin-left: 10px;
         }
         h1, h2, h3 {
             color: #333;
@@ -66,6 +71,10 @@
             text-align: center;
             padding: 10px 20px;
             background-color: #ddd;
+        }
+        .edit-container {
+            display: none;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -106,15 +115,14 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Register the logout button event listener
             document.getElementById('logoutButton').addEventListener('click', function() {
                 fetch('/logout', {
                     method: 'GET',
-                    credentials: 'include' // Ensures cookies, such as session IDs, are sent with the request
+                    credentials: 'include'
                 })
                 .then(response => {
                     if (response.ok) {
-                        window.location.href = '/login.html'; // Redirect to login after logout
+                        window.location.href = '/login.html'; 
                     } else {
                         throw new Error('Logout failed: ' + response.statusText);
                     }
@@ -124,55 +132,112 @@
                 });
             });
 
-            // Fetch tickets immediately after the page loads
-            fetchTickets(); 
+            fetchTickets(); // Load tickets on page load
         });
 
         function fetchTickets() {
-    fetch('/tickets')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to fetch tickets: ' + response.statusText);
-            }
-            return response.json();
-        })
-        .then(tickets => {
-            console.log('Tickets fetched:', tickets); // Log the tickets to see what they look like
-            const container = document.getElementById('ticketsContainer');
-            container.innerHTML = ''; // Clear previous content
-            if (tickets.length === 0) {
-                container.innerHTML = '<p>No tickets to display.</p>';
-            } else {
-                tickets.forEach(ticket => {
-                    console.log('Processing ticket:', ticket); // Log each ticket
-                    if (!ticket.title || !ticket.description || !ticket.priority || !ticket.status) {
-                        console.error('Undefined properties in ticket:', ticket);
+            fetch('/tickets')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch tickets: ' + response.statusText);
                     }
-                    const ticketDiv = document.createElement('div');
-                    ticketDiv.className = 'ticket';
-                    ticketDiv.innerHTML = `
-                        <h4>${ticket.title || 'No Title'}</h4>
-                        <p>${ticket.description || 'No Description'}</p>
-                        <p>Priority: ${ticket.priority || 'No Priority'} | Status: ${ticket.status || 'No Status'}</p>
-                    `;
-                    container.appendChild(ticketDiv);
+                    return response.json();
+                })
+                .then(tickets => {
+                    const container = document.getElementById('ticketsContainer');
+                    container.innerHTML = '';
+                    if (tickets.tickets.length === 0) {
+                        container.innerHTML = '<p>No tickets to display.</p>';
+                    } else {
+                        tickets.tickets.forEach(ticket => {
+                            const ticketDiv = document.createElement('div');
+                            ticketDiv.className = 'ticket';
+                            ticketDiv.innerHTML = `
+                                <h4>${ticket.Title || 'No Title'}</h4>
+                                <p>${ticket.Description || 'No Description'}</p>
+                                <p>Priority: ${ticket.Priority || 'No Priority'} | Status: ${ticket.Status || 'No Status'}</p>
+                                <button onclick="editTicket(${ticket.TicketID}, this)">Edit</button>
+                                <button onclick="deleteTicket(${ticket.TicketID})">Delete</button>
+                            `;
+                            console.log(ticket.TicketID)
+                            container.appendChild(ticketDiv);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching tickets:', error);
+                    document.getElementById('ticketsContainer').innerHTML = '<p>Error loading tickets.</p>';
+                });
+        }
+
+        function editTicket(ticketId, element) {
+            const ticketDiv = element.parentNode;
+            const editContainer = document.createElement('div');
+            editContainer.className = 'edit-container';
+            editContainer.innerHTML = `
+                <select id="statusSelect${ticketId}">
+                    <option value="Open">Open</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Closed">Closed</option>
+                </select>
+                <button onclick="saveStatus(${ticketId})">Save</button>
+            `;
+            ticketDiv.appendChild(editContainer);
+            editContainer.style.display = 'block';
+        }
+
+        function saveStatus(ticketId) {
+            const statusSelect = document.getElementById('statusSelect' + ticketId);
+            const newStatus = statusSelect.value;
+
+            fetch('/edit_ticket/' + ticketId, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: newStatus })
+            })
+            .then(response => {
+                if (response.ok) {
+                    alert('Status updated successfully!');
+                    fetchTickets(); // Refresh tickets to show updated status
+                } else {
+                    throw new Error('Failed to update status: ' + response.statusText);
+                }
+            })
+            .catch(error => {
+                alert('Error updating ticket status: ' + error.message);
+            });
+        }
+
+        function deleteTicket(ticketId) {
+            const confirmation = confirm('Are you sure you want to delete this ticket?');
+            if (confirmation) {
+                fetch('/delete_ticket/' + ticketId, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        alert('Ticket deleted successfully!');
+                        fetchTickets(); // Refresh the list after deletion
+                    } else {
+                        throw new Error('Failed to delete ticket: ' + response.statusText);
+                    }
+                })
+                .catch(error => {
+                    alert('Error deleting ticket: ' + error.message);
                 });
             }
-        })
-        .catch(error => {
-            console.error('Error fetching tickets:', error);
-            document.getElementById('ticketsContainer').innerHTML = '<p>Error loading tickets.</p>';
-        });
-}
+        }
 
         function showSection(sectionId) {
             const sections = document.querySelectorAll('.content');
             sections.forEach(section => {
-                section.style.display = 'none'; // Hide all sections
+                section.style.display = 'none';
             });
             const targetSection = document.getElementById(sectionId);
             if (targetSection) {
-                targetSection.style.display = 'block'; // Show the requested section
+                targetSection.style.display = 'block';
             }
         }
     </script>
