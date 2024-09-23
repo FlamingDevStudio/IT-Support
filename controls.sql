@@ -57,7 +57,6 @@ CREATE TABLE IF NOT EXISTS KnowledgeBase (
     FOREIGN KEY (CreatedBy) REFERENCES Users(user_id)
 );
 
--- Insert test users
 INSERT INTO Users (username, password, role) VALUES
 ('yylam123', 'password123', 'admin'),
 ('jtteach', 'teachpass', 'it_support'),
@@ -113,4 +112,6 @@ INSERT INTO KnowledgeBase (Title, Content, Category, CreatedBy, CreatedAt, Updat
 ('Best practices for online teaching', 'Enhance your online teaching: 1. Use interactive tools like polls and quizzes. 2. Encourage student participation through chat or video. 3. Break content into smaller, manageable chunks. 4. Provide clear instructions for assignments. 5. Offer regular feedback and support.', 'Education', 2, '2023-05-05 16:45:00', '2023-05-05 16:45:00'),
 ('Troubleshooting interactive whiteboard', 'If the touch function isn''t working: 1. Ensure the USB cable is securely connected. 2. Restart the computer and whiteboard. 3. Recalibrate the board using the calibration tool. 4. Update whiteboard drivers if available.', 'Hardware', 3, '2023-05-06 09:30:00', '2023-05-06 09:30:00'),
 ('Managing email storage', 'To manage your email storage: 1. Regularly delete unnecessary emails. 2. Empty your trash folder. 3. Archive important old emails. 4. Unsubscribe from newsletters you don''t read. 5. Use cloud storage for large attachments instead of keeping them in your email.', 'Software', 2, '2023-05-07 13:15:00', '2023-05-07 13:15:00'),
-('Using math visualization software', 'Getting started with math software: 1. Open the application. 2. Select the type of graph or function you want to visualize. 3. Input your equation or data points. 4. Use the tools to manipulate and explore the visualization. 5. Save or export your work as needed.', 'Software', 3, '2023-05-08 11:00:00
+('Using math visualization software', 'Getting started with math software: 1. Open the application. 2. Select the type of graph or function you want to visualize. 3. Input your equation or data points. 4. Use the tools to manipulate and explore the visualization. 5. Save or export your work as needed.', 'Software', 3, '2023-05-08 11:00:00')
+
+

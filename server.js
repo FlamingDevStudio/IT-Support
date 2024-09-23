@@ -149,15 +149,103 @@ app.post('/signup', (req, res) => {
 // Login route
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-    db.get('SELECT * FROM Users WHERE username = ? AND password = ?', [username, password], (err, user) => {
+    console.log(`Login attempt: username=${username}, password=${password}`); // Debug log
+
+    db.get('SELECT * FROM Users WHERE username = ?', [username], (err, user) => {
         if (err) {
-            console.error(err.message);
-            res.status(500).json({ message: "An error occurred during login." });
-        } else if (user) {
+            console.error('Database error:', err.message);
+            return res.status(500).json({ message: "An error occurred during login." });
+        }
+        
+        console.log('User found:', user); // Debug log
+
+        if (user && user.password === password) {
             req.session.user = { userId: user.user_id, username: user.username, role: user.role };
+            console.log('Login successful:', req.session.user); // Debug log
             res.json({ role: user.role });
         } else {
+            console.log('Login failed: Invalid username or password'); // Debug log
             res.status(401).json({ message: 'Invalid username or password' });
+        }
+    });
+});
+
+// Update user (admin route)
+app.patch('/admin/users/:userId', isAdmin, (req, res) => {
+    const { userId } = req.params;
+    const { username, role, password } = req.body;
+
+    let query = 'UPDATE Users SET ';
+    let params = [];
+    let updates = [];
+
+    if (username !== undefined) {
+        updates.push('username = ?');
+        params.push(username);
+    }
+    if (role !== undefined) {
+        updates.push('role = ?');
+        params.push(role);
+    }
+    if (password !== undefined) {
+        updates.push('password = ?');
+        params.push(password);
+    }
+
+    if (updates.length === 0) {
+        return res.status(400).json({ message: "No updates provided." });
+    }
+
+    query += updates.join(', ');
+    query += ' WHERE user_id = ?';
+    params.push(userId);
+
+    db.run(query, params, function(err) {
+        if (err) {
+            console.error('Error updating user:', err.message);
+            res.status(500).json({ message: "Failed to update user." });
+        } else {
+            res.json({ message: "User updated successfully." });
+        }
+    });
+});
+
+// Update admin's own profile
+app.patch('/admin/update_profile', isAdmin, (req, res) => {
+    const { username, password } = req.body;
+    const userId = req.session.user.userId;
+
+    let query = 'UPDATE Users SET ';
+    let params = [];
+    let updates = [];
+
+    if (username) {
+        updates.push('username = ?');
+        params.push(username);
+    }
+
+    if (password) {
+        updates.push('password = ?');
+        params.push(password);
+    }
+
+    if (updates.length === 0) {
+        return res.status(400).json({ message: "No updates provided." });
+    }
+
+    query += updates.join(', ');
+    query += ' WHERE user_id = ?';
+    params.push(userId);
+
+    db.run(query, params, function(err) {
+        if (err) {
+            console.error('Error updating profile:', err.message);
+            res.status(500).json({ message: "Failed to update profile." });
+        } else {
+            if (username) {
+                req.session.user.username = username;
+            }
+            res.json({ message: "Profile updated successfully." });
         }
     });
 });
@@ -468,7 +556,7 @@ app.delete('/delete_article/:ArticleID', isAdminOrIT, (req, res) => {
 
 // Admin routes for database management
 app.get('/admin/users', isAdmin, (req, res) => {
-    db.all('SELECT user_id, username, role FROM Users', [], (err, users) => {
+    db.all('SELECT user_id, username, password, role FROM Users', [], (err, users) => {
         if (err) {
             console.error('Error fetching users:', err.message);
             res.status(500).json({ message: "Failed to retrieve users." });
@@ -478,21 +566,9 @@ app.get('/admin/users', isAdmin, (req, res) => {
     });
 });
 
-app.post('/admin/users', isAdmin, (req, res) => {
-    const { username, password, role } = req.body;
-    db.run('INSERT INTO Users (username, password, role) VALUES (?, ?, ?)', [username, password, role], function(err) {
-        if (err) {
-            console.error('Error adding user:', err.message);
-            res.status(500).json({ message: "Failed to add user." });
-        } else {
-            res.json({ message: "User added successfully.", userId: this.lastID });
-        }
-    });
-});
-
 app.get('/admin/users/:userId', isAdmin, (req, res) => {
     const { userId } = req.params;
-    db.get('SELECT user_id, username, role FROM Users WHERE user_id = ?', [userId], (err, user) => {
+    db.get('SELECT user_id, username, password, role FROM Users WHERE user_id = ?', [userId], (err, user) => {
         if (err) {
             console.error('Error fetching user:', err.message);
             res.status(500).json({ message: "Failed to retrieve user." });
@@ -504,19 +580,6 @@ app.get('/admin/users/:userId', isAdmin, (req, res) => {
     });
 });
 
-app.patch('/admin/users/:userId', isAdmin, (req, res) => {
-    const { userId } = req.params;
-    const { username, role } = req.body;
-
-    db.run('UPDATE Users SET username = ?, role = ? WHERE user_id = ?', [username, role, userId], function(err) {
-        if (err) {
-            console.error('Error updating user:', err.message);
-            res.status(500).json({ message: "Failed to update user." });
-        } else {
-            res.json({ message: "User updated successfully." });
-        }
-    });
-});
 
 app.delete('/admin/users/:userId', isAdmin, (req, res) => {
     const { userId } = req.params;
@@ -711,45 +774,6 @@ app.delete('/admin/knowledge_base/:articleId', isAdmin, (req, res) => {
             res.status(500).json({ message: "Failed to delete article." });
         } else {
             res.json({ message: "Article deleted successfully." });
-        }
-    });
-});
-
-app.patch('/admin/update_profile', isAdmin, (req, res) => {
-    const { username, password } = req.body;
-    const userId = req.session.user.userId;
-
-    let query = 'UPDATE Users SET ';
-    let params = [];
-    let updates = [];
-
-    if (username) {
-        updates.push('username = ?');
-        params.push(username);
-    }
-
-    if (password) {
-        updates.push('password = ?');
-        params.push(password);
-    }
-
-    if (updates.length === 0) {
-        return res.status(400).json({ message: "No updates provided." });
-    }
-
-    query += updates.join(', ');
-    query += ' WHERE user_id = ?';
-    params.push(userId);
-
-    db.run(query, params, function(err) {
-        if (err) {
-            console.error('Error updating profile:', err.message);
-            res.status(500).json({ message: "Failed to update profile." });
-        } else {
-            if (username) {
-                req.session.user.username = username;
-            }
-            res.json({ message: "Profile updated successfully." });
         }
     });
 });
