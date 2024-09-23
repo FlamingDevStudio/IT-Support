@@ -778,6 +778,44 @@ app.delete('/admin/knowledge_base/:articleId', isAdmin, (req, res) => {
     });
 });
 
+// Update user's own account info
+app.patch('/update_user_info', isLoggedIn, (req, res) => {
+    const userId = req.session.user.userId;
+    const { username, password } = req.body;
+
+    let query = 'UPDATE Users SET ';
+    let params = [];
+    let updates = [];
+
+    if (username) {
+        updates.push('username = ?');
+        params.push(username);
+    }
+    if (password) {
+        updates.push('password = ?');
+        params.push(password);
+    }
+
+    if (updates.length === 0) {
+        return res.status(400).json({ message: "No updates provided." });
+    }
+
+    query += updates.join(', ');
+    query += ' WHERE user_id = ?';
+    params.push(userId);
+
+    db.run(query, params, function(err) {
+        if (err) {
+            console.error('Error updating user info:', err.message);
+            res.status(500).json({ message: "Failed to update user information." });
+        } else {
+            if (username) {
+                req.session.user.username = username;
+            }
+            res.json({ message: "User information updated successfully." });
+        }
+    });
+});
 // Start the server
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}/`);

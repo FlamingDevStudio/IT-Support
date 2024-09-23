@@ -15,6 +15,7 @@
                     <li><a href="#" onclick="showSection('ticketsSection')">My Tickets</a></li>
                     <li><a href="#" onclick="showSection('equipmentSection')">Equipment</a></li>
                     <li><a href="#" onclick="showSection('knowledgeBaseSection')">Knowledge Base</a></li>
+                    <li><a href="#" onclick="showSection('profileSection')">My Profile</a></li>
                     <li><a href="#" onclick="logout()">Logout</a></li>
                 </ul>
             </nav>
@@ -110,16 +111,32 @@
                 <tbody></tbody>
             </table>
         </div>
+
+        <div id="profileSection" class="card hidden">
+            <h2>Update Profile</h2>
+            <form id="update-form">
+                <label for="new-username">New Username:</label>
+                <input type="text" id="new-username" name="username" required>
+                
+                <label for="new-password">New Password:</label>
+                <input type="password" id="new-password" name="password" required>
+                
+                <button type="submit" class="btn">Update Profile</button>
+            </form>
+        </div>
     </div>
 
     <script>
         // Fetch user info and update username
-        fetch('/user_info')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('username').textContent = data.username;
-            })
-            .catch(error => console.error('Error:', error));
+        function loadUserInfo() {
+            fetch('/user_info')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('username').textContent = data.username;
+                    document.getElementById('new-username').value = data.username;
+                })
+                .catch(error => console.error('Error:', error));
+        }
 
         // Show section function
         function showSection(sectionId) {
@@ -317,11 +334,37 @@
                 .catch(error => console.error('Error:', error));
         }
 
+        // Update user info function
+        function updateUserInfo(event) {
+            event.preventDefault();
+            const username = document.getElementById('new-username').value;
+            const password = document.getElementById('new-password').value;
+
+            fetch('/update_user_info', {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ username, password }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.message === "User information updated successfully.") {
+                    loadUserInfo();
+                    document.getElementById('update-form').reset();
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
         // Initial load
+        loadUserInfo();
         loadTickets();
         loadEquipment();
         loadBorrowedEquipment();
         loadKnowledgeBase();
+        document.getElementById('update-form').addEventListener('submit', updateUserInfo);
     </script>
 </body>
 </html>
