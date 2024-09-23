@@ -12,7 +12,6 @@
         <div class="container">
             <nav>
                 <ul>
-                    <li><a href="#" onclick="showSection('accountSection')">Account</a></li>
                     <li><a href="#" onclick="showSection('ticketsSection')">Manage Tickets</a></li>
                     <li><a href="#" onclick="showSection('equipmentSection')">Manage Equipment</a></li>
                     <li><a href="#" onclick="showSection('knowledgeBaseSection')">Knowledge Base</a></li>
@@ -23,20 +22,23 @@
     </header>
 
     <div class="container">
-        <h1>Welcome, <span id="username"></span>!</h1>
+        <h1>Welcome, IT Support <span id="username"></span>!</h1>
         
-        <div id="accountSection" class="card hidden">
-            <h2>Update Account Info</h2>
-            <form id="updateAccountForm">
-                <input type="text" id="newUsername" placeholder="New Username">
-                <input type="password" id="newPassword" placeholder="New Password">
-                <button type="submit" class="btn">Update Account</button>
-            </form>
-        </div>
-
         <div id="ticketsSection" class="card">
             <h2>Manage Tickets</h2>
-            <div id="ticketsList"></div>
+            <table id="ticketsList">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Category</th>
+                        <th>User</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
 
         <div id="equipmentSection" class="card hidden">
@@ -44,13 +46,30 @@
             <button onclick="showAddEquipmentForm()" class="btn">Add New Equipment</button>
             <div id="addEquipmentForm" class="hidden">
                 <form id="equipmentForm">
+                    <label for="equipmentName">Name:</label>
                     <input type="text" id="equipmentName" placeholder="Equipment Name" required>
+                    
+                    <label for="equipmentDescription">Description:</label>
                     <textarea id="equipmentDescription" placeholder="Description" required></textarea>
+                    
+                    <label for="equipmentStock">Total Stock:</label>
                     <input type="number" id="equipmentStock" placeholder="Total Stock" required>
+                    
                     <button type="submit" class="btn">Add Equipment</button>
                 </form>
             </div>
-            <div id="equipmentList"></div>
+            <table id="equipmentList">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Available</th>
+                        <th>Total</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
 
         <div id="knowledgeBaseSection" class="card hidden">
@@ -58,13 +77,29 @@
             <button onclick="showAddArticleForm()" class="btn">Add New Article</button>
             <div id="addArticleForm" class="hidden">
                 <form id="articleForm">
+                    <label for="articleTitle">Title:</label>
                     <input type="text" id="articleTitle" placeholder="Article Title" required>
+                    
+                    <label for="articleCategory">Category:</label>
                     <input type="text" id="articleCategory" placeholder="Category" required>
+                    
+                    <label for="articleContent">Content:</label>
                     <textarea id="articleContent" placeholder="Article Content" required></textarea>
+                    
                     <button type="submit" class="btn">Add Article</button>
                 </form>
             </div>
-            <div id="knowledgeBaseList"></div>
+            <table id="knowledgeBaseList">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Author</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
 
@@ -85,59 +120,62 @@
             document.getElementById(sectionId).classList.remove('hidden');
         }
 
-        // Update account info
-        document.getElementById('updateAccountForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const newUsername = document.getElementById('newUsername').value;
-            const newPassword = document.getElementById('newPassword').value;
-            
-            fetch('/update_user_info', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username: newUsername, password: newPassword })
-            })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                if (data.message === "User info updated successfully.") {
-                    document.getElementById('username').textContent = newUsername || document.getElementById('username').textContent;
-                }
-            })
-            .catch(error => console.error('Error:', error));
-        });
-
         // Load tickets
         function loadTickets() {
             fetch('/tickets')
                 .then(response => response.json())
                 .then(data => {
-                    const ticketsList = document.getElementById('ticketsList');
-                    ticketsList.innerHTML = '<table><tr><th>Title</th><th>Status</th><th>Priority</th><th>Category</th><th>Action</th></tr>';
+                    const ticketsList = document.getElementById('ticketsList').getElementsByTagName('tbody')[0];
+                    ticketsList.innerHTML = '';
                     data.tickets.forEach(ticket => {
-                        ticketsList.innerHTML += `
-                            <tr>
-                                <td>${ticket.Title}</td>
-                                <td>${ticket.Status}</td>
-                                <td>${ticket.Priority}</td>
-                                <td>${ticket.Category}</td>
-                                <td><button onclick="editTicket(${ticket.TicketID})" class="btn btn-small">Edit</button></td>
-                            </tr>
-                        `;
+                        const row = ticketsList.insertRow();
+                        row.insertCell(0).textContent = ticket.Title;
+                        row.insertCell(1).textContent = ticket.Status;
+                        row.insertCell(2).textContent = ticket.Priority;
+                        row.insertCell(3).textContent = ticket.Category;
+                        row.insertCell(4).textContent = ticket.Username;
+                        const actionsCell = row.insertCell(5);
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Edit';
+                        editButton.className = 'btn btn-small';
+                        editButton.onclick = () => editTicket(ticket.TicketID);
+                        actionsCell.appendChild(editButton);
                     });
-                    ticketsList.innerHTML += '</table>';
                 })
                 .catch(error => console.error('Error:', error));
         }
 
         // Edit ticket function
         function editTicket(ticketId) {
-            // Implement edit ticket functionality
-            console.log('Editing ticket:', ticketId);
+            fetch(`/tickets/${ticketId}`)
+                .then(response => response.json())
+                .then(ticket => {
+                    const newStatus = prompt(`Current Status: ${ticket.Status}\nEnter new status:`, ticket.Status);
+                    if (newStatus && newStatus !== ticket.Status) {
+                        updateTicketStatus(ticketId, newStatus);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Update ticket status
+        function updateTicketStatus(ticketId, newStatus) {
+            fetch(`/update_ticket/${ticketId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Status: newStatus })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadTickets();
+            })
+            .catch(error => console.error('Error:', error));
         }
 
         // Show add equipment form
         function showAddEquipmentForm() {
-            document.getElementById('addEquipmentForm').classList.remove('hidden');
+            document.getElementById('addEquipmentForm').classList.toggle('hidden');
         }
 
         // Add new equipment
@@ -159,7 +197,7 @@
                 alert(data.message);
                 loadEquipment();
                 document.getElementById('equipmentForm').reset();
-                document.getElementById('addEquipmentForm').classList.add('hidden');
+                showAddEquipmentForm();
             })
             .catch(error => console.error('Error:', error));
         });
@@ -169,33 +207,56 @@
             fetch('/equipment')
                 .then(response => response.json())
                 .then(data => {
-                    const equipmentList = document.getElementById('equipmentList');
-                    equipmentList.innerHTML = '<table><tr><th>Name</th><th>Description</th><th>Available</th><th>Total</th><th>Action</th></tr>';
+                    const equipmentList = document.getElementById('equipmentList').getElementsByTagName('tbody')[0];
+                    equipmentList.innerHTML = '';
                     data.forEach(item => {
-                        equipmentList.innerHTML += `
-                            <tr>
-                                <td>${item.Name}</td>
-                                <td>${item.Description}</td>
-                                <td>${item.AvailableStock}</td>
-                                <td>${item.TotalStock}</td>
-                                <td><button onclick="editEquipment(${item.EquipmentID})" class="btn btn-small">Edit</button></td>
-                            </tr>
-                        `;
+                        const row = equipmentList.insertRow();
+                        row.insertCell(0).textContent = item.Name;
+                        row.insertCell(1).textContent = item.Description;
+                        row.insertCell(2).textContent = item.AvailableStock;
+                        row.insertCell(3).textContent = item.TotalStock;
+                        const actionsCell = row.insertCell(4);
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Edit';
+                        editButton.className = 'btn btn-small';
+                        editButton.onclick = () => editEquipment(item.EquipmentID);
+                        actionsCell.appendChild(editButton);
                     });
-                    equipmentList.innerHTML += '</table>';
                 })
                 .catch(error => console.error('Error:', error));
         }
 
         // Edit equipment function
         function editEquipment(equipmentId) {
-            // Implement edit equipment functionality
-            console.log('Editing equipment:', equipmentId);
+            fetch(`/equipment/${equipmentId}`)
+                .then(response => response.json())
+                .then(equipment => {
+                    const newStock = prompt(`Current Total Stock: ${equipment.TotalStock}\nEnter new total stock:`, equipment.TotalStock);
+                    if (newStock && !isNaN(newStock) && parseInt(newStock) >= 0) {
+                        updateEquipmentStock(equipmentId, parseInt(newStock));
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Update equipment stock
+        function updateEquipmentStock(equipmentId, newStock) {
+            fetch(`/update_equipment/${equipmentId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ TotalStock: newStock })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadEquipment();
+            })
+            .catch(error => console.error('Error:', error));
         }
 
         // Show add article form
         function showAddArticleForm() {
-            document.getElementById('addArticleForm').classList.remove('hidden');
+            document.getElementById('addArticleForm').classList.toggle('hidden');
         }
 
         // Add new knowledge base article
@@ -217,7 +278,7 @@
                 alert(data.message);
                 loadKnowledgeBase();
                 document.getElementById('articleForm').reset();
-                document.getElementById('addArticleForm').classList.add('hidden');
+                showAddArticleForm();
             })
             .catch(error => console.error('Error:', error));
         });
@@ -227,21 +288,25 @@
             fetch('/knowledge_base')
                 .then(response => response.json())
                 .then(data => {
-                    const knowledgeBaseList = document.getElementById('knowledgeBaseList');
-                    knowledgeBaseList.innerHTML = '<table><tr><th>Title</th><th>Category</th><th>Action</th></tr>';
+                    const knowledgeBaseList = document.getElementById('knowledgeBaseList').getElementsByTagName('tbody')[0];
+                    knowledgeBaseList.innerHTML = '';
                     data.articles.forEach(article => {
-                        knowledgeBaseList.innerHTML += `
-                            <tr>
-                                <td>${article.Title}</td>
-                                <td>${article.Category}</td>
-                                <td>
-                                    <button onclick="viewArticle(${article.ArticleID})" class="btn btn-small">View</button>
-                                    <button onclick="editArticle(${article.ArticleID})" class="btn btn-small">Edit</button>
-                                </td>
-                            </tr>
-                        `;
+                        const row = knowledgeBaseList.insertRow();
+                        row.insertCell(0).textContent = article.Title;
+                        row.insertCell(1).textContent = article.Category;
+                        row.insertCell(2).textContent = article.AuthorName;
+                        const actionsCell = row.insertCell(3);
+                        const viewButton = document.createElement('button');
+                        viewButton.textContent = 'View';
+                        viewButton.className = 'btn btn-small';
+                        viewButton.onclick = () => viewArticle(article.ArticleID);
+                        const editButton = document.createElement('button');
+                        editButton.textContent = 'Edit';
+                        editButton.className = 'btn btn-small';
+                        editButton.onclick = () => editArticle(article.ArticleID);
+                        actionsCell.appendChild(viewButton);
+                        actionsCell.appendChild(editButton);
                     });
-                    knowledgeBaseList.innerHTML += '</table>';
                 })
                 .catch(error => console.error('Error:', error));
         }
@@ -251,15 +316,39 @@
             fetch(`/knowledge_base/${articleId}`)
                 .then(response => response.json())
                 .then(article => {
-                    alert(`Title: ${article.Title}\n\nCategory: ${article.Category}\n\nContent: ${article.Content}`);
+                    alert(`Title: ${article.Title}\n\nCategory: ${article.Category}\n\nContent: ${article.Content}\n\nAuthor: ${article.AuthorName}`);
                 })
                 .catch(error => console.error('Error:', error));
         }
 
         // Edit knowledge base article
         function editArticle(articleId) {
-            // Implement edit article functionality
-            console.log('Editing article:', articleId);
+            fetch(`/knowledge_base/${articleId}`)
+                .then(response => response.json())
+                .then(article => {
+                    const newTitle = prompt(`Current Title: ${article.Title}\nEnter new title:`, article.Title);
+                    const newCategory = prompt(`Current Category: ${article.Category}\nEnter new category:`, article.Category);
+                    const newContent = prompt(`Current Content: ${article.Content}\nEnter new content:`, article.Content);
+                    if (newTitle && newCategory && newContent) {
+                        updateArticle(articleId, newTitle, newCategory, newContent);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Update knowledge base article
+        function updateArticle(articleId, newTitle, newCategory, newContent) {
+            fetch(`/update_article/${articleId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ Title: newTitle, Category: newCategory, Content: newContent })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadKnowledgeBase();
+            })
+            .catch(error => console.error('Error:', error));
         }
 
         // Logout function

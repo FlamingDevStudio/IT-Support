@@ -12,10 +12,10 @@
         <div class="container">
             <nav>
                 <ul>
-                    <li><a href="#" id="ticketsLink">My Tickets</a></li>
-                    <li><a href="#" id="equipmentLink">Borrow Equipment</a></li>
-                    <li><a href="#" id="knowledgeBaseLink">Knowledge Base</a></li>
-                    <li><a href="#" id="logoutLink">Logout</a></li>
+                    <li><a href="#" onclick="showSection('ticketsSection')">My Tickets</a></li>
+                    <li><a href="#" onclick="showSection('equipmentSection')">Equipment</a></li>
+                    <li><a href="#" onclick="showSection('knowledgeBaseSection')">Knowledge Base</a></li>
+                    <li><a href="#" onclick="logout()">Logout</a></li>
                 </ul>
             </nav>
         </div>
@@ -26,23 +26,94 @@
         
         <div id="ticketsSection" class="card">
             <h2>My Tickets</h2>
-            <button id="newTicketBtn" class="btn">New Ticket</button>
-            <div id="ticketsList"></div>
+            <button onclick="showAddTicketForm()" class="btn">Submit New Ticket</button>
+            <div id="addTicketForm" class="hidden">
+                <form id="ticketForm">
+                    <label for="ticketTitle">Title:</label>
+                    <input type="text" id="ticketTitle" placeholder="Ticket Title" required>
+                    
+                    <label for="ticketDescription">Description:</label>
+                    <textarea id="ticketDescription" placeholder="Ticket Description" required></textarea>
+                    
+                    <label for="ticketPriority">Priority:</label>
+                    <select id="ticketPriority" required>
+                        <option value="">Select Priority</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                    </select>
+                    
+                    <label for="ticketCategory">Category:</label>
+                    <select id="ticketCategory" required>
+                        <option value="">Select Category</option>
+                        <option value="Hardware">Hardware</option>
+                        <option value="Software">Software</option>
+                        <option value="Network">Network</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    
+                    <button type="submit" class="btn">Submit Ticket</button>
+                </form>
+            </div>
+            <table id="ticketsList">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Status</th>
+                        <th>Priority</th>
+                        <th>Category</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
 
-        <div id="equipmentSection" class="card" style="display:none;">
-            <h2>Borrow Equipment</h2>
-            <div id="equipmentList"></div>
+        <div id="equipmentSection" class="card hidden">
+            <h2>Equipment</h2>
+            <table id="equipmentList">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Description</th>
+                        <th>Available</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <h3>My Borrowed Equipment</h3>
+            <table id="borrowedEquipmentList">
+                <thead>
+                    <tr>
+                        <th>Equipment</th>
+                        <th>Quantity</th>
+                        <th>Borrow Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
 
-        <div id="knowledgeBaseSection" class="card" style="display:none;">
+        <div id="knowledgeBaseSection" class="card hidden">
             <h2>Knowledge Base</h2>
-            <div id="articlesList"></div>
+            <table id="knowledgeBaseList">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Category</th>
+                        <th>Author</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        // Load user info
+        // Fetch user info and update username
         fetch('/user_info')
             .then(response => response.json())
             .then(data => {
@@ -50,57 +121,74 @@
             })
             .catch(error => console.error('Error:', error));
 
-        // Navigation
-        document.getElementById('ticketsLink').addEventListener('click', function(e) {
-            e.preventDefault();
-            showSection('ticketsSection');
-            loadTickets();
-        });
-
-        document.getElementById('equipmentLink').addEventListener('click', function(e) {
-            e.preventDefault();
-            showSection('equipmentSection');
-            loadEquipment();
-        });
-
-        document.getElementById('knowledgeBaseLink').addEventListener('click', function(e) {
-            e.preventDefault();
-            showSection('knowledgeBaseSection');
-            loadKnowledgeBase();
-        });
-
-        document.getElementById('logoutLink').addEventListener('click', function(e) {
-            e.preventDefault();
-            fetch('/logout', { method: 'POST' })
-                .then(() => window.location.href = 'login.html')
-                .catch(error => console.error('Error:', error));
-        });
-
+        // Show section function
         function showSection(sectionId) {
-            document.getElementById('ticketsSection').style.display = 'none';
-            document.getElementById('equipmentSection').style.display = 'none';
-            document.getElementById('knowledgeBaseSection').style.display = 'none';
-            document.getElementById(sectionId).style.display = 'block';
+            document.querySelectorAll('.card').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(sectionId).classList.remove('hidden');
         }
+
+        // Show add ticket form
+        function showAddTicketForm() {
+            document.getElementById('addTicketForm').classList.toggle('hidden');
+        }
+
+        // Submit new ticket
+        document.getElementById('ticketForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const ticketData = {
+                Title: document.getElementById('ticketTitle').value,
+                Description: document.getElementById('ticketDescription').value,
+                Priority: document.getElementById('ticketPriority').value,
+                Category: document.getElementById('ticketCategory').value
+            };
+
+            fetch('/submit_ticket', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(ticketData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadTickets();
+                document.getElementById('ticketForm').reset();
+                showAddTicketForm();
+            })
+            .catch(error => console.error('Error:', error));
+        });
 
         // Load tickets
         function loadTickets() {
             fetch('/tickets')
                 .then(response => response.json())
                 .then(data => {
-                    const ticketsList = document.getElementById('ticketsList');
-                    ticketsList.innerHTML = '<table><tr><th>Title</th><th>Status</th><th>Priority</th><th>Category</th></tr>';
+                    const ticketsList = document.getElementById('ticketsList').getElementsByTagName('tbody')[0];
+                    ticketsList.innerHTML = '';
                     data.tickets.forEach(ticket => {
-                        ticketsList.innerHTML += `
-                            <tr>
-                                <td>${ticket.Title}</td>
-                                <td>${ticket.Status}</td>
-                                <td>${ticket.Priority}</td>
-                                <td>${ticket.Category}</td>
-                            </tr>
-                        `;
+                        const row = ticketsList.insertRow();
+                        row.insertCell(0).textContent = ticket.Title;
+                        row.insertCell(1).textContent = ticket.Status;
+                        row.insertCell(2).textContent = ticket.Priority;
+                        row.insertCell(3).textContent = ticket.Category;
+                        const actionsCell = row.insertCell(4);
+                        const viewButton = document.createElement('button');
+                        viewButton.textContent = 'View';
+                        viewButton.className = 'btn btn-small';
+                        viewButton.onclick = () => viewTicket(ticket.TicketID);
+                        actionsCell.appendChild(viewButton);
                     });
-                    ticketsList.innerHTML += '</table>';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // View ticket function
+        function viewTicket(ticketId) {
+            fetch(`/tickets/${ticketId}`)
+                .then(response => response.json())
+                .then(ticket => {
+                    alert(`Title: ${ticket.Title}\n\nDescription: ${ticket.Description}\n\nStatus: ${ticket.Status}\n\nPriority: ${ticket.Priority}\n\nCategory: ${ticket.Category}`);
                 })
                 .catch(error => console.error('Error:', error));
         }
@@ -110,90 +198,29 @@
             fetch('/equipment')
                 .then(response => response.json())
                 .then(data => {
-                    const equipmentList = document.getElementById('equipmentList');
-                    equipmentList.innerHTML = '<table><tr><th>Name</th><th>Description</th><th>Available</th><th>Action</th></tr>';
+                    const equipmentList = document.getElementById('equipmentList').getElementsByTagName('tbody')[0];
+                    equipmentList.innerHTML = '';
                     data.forEach(item => {
-                        equipmentList.innerHTML += `
-                            <tr>
-                                <td>${item.Name}</td>
-                                <td>${item.Description}</td>
-                                <td>${item.AvailableStock}</td>
-                                <td><button onclick="borrowEquipment(${item.EquipmentID})">Borrow</button></td>
-                            </tr>
-                        `;
+                        const row = equipmentList.insertRow();
+                        row.insertCell(0).textContent = item.Name;
+                        row.insertCell(1).textContent = item.Description;
+                        row.insertCell(2).textContent = item.AvailableStock;
+                        const actionsCell = row.insertCell(3);
+                        const borrowButton = document.createElement('button');
+                        borrowButton.textContent = 'Borrow';
+                        borrowButton.className = 'btn btn-small';
+                        borrowButton.onclick = () => borrowEquipment(item.EquipmentID);
+                        borrowButton.disabled = item.AvailableStock === 0;
+                        actionsCell.appendChild(borrowButton);
                     });
-                    equipmentList.innerHTML += '</table>';
                 })
                 .catch(error => console.error('Error:', error));
         }
 
-        // Load knowledge base
-        function loadKnowledgeBase() {
-            fetch('/knowledge_base')
-                .then(response => response.json())
-                .then(data => {
-                    const articlesList = document.getElementById('articlesList');
-                    articlesList.innerHTML = '<table><tr><th>Title</th><th>Category</th><th>Author</th><th>Action</th></tr>';
-                    data.articles.forEach(article => {
-                        articlesList.innerHTML += `
-                            <tr>
-                                <td>${article.Title}</td>
-                                <td>${article.Category}</td>
-                                <td>${article.AuthorName}</td>
-                                <td><button onclick="viewArticle(${article.ArticleID})">View</button></td>
-                            </tr>
-                        `;
-                    });
-                    articlesList.innerHTML += '</table>';
-                })
-                .catch(error => console.error('Error:', error));
-        }
-
-        // New ticket form
-        document.getElementById('newTicketBtn').addEventListener('click', function() {
-            const form = document.createElement('form');
-            form.innerHTML = `
-                <input type="text" id="ticketTitle" placeholder="Title" required>
-                <textarea id="ticketDescription" placeholder="Description" required></textarea>
-                <select id="ticketPriority" required>
-                    <option value="">Select Priority</option>
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                </select>
-                <select id="ticketCategory" required>
-                    <option value="">Select Category</option>
-                    <option value="Hardware">Hardware</option>
-                    <option value="Software">Software</option>
-                    <option value="Network">Network</option>
-                    <option value="Other">Other</option>
-                </select>
-                <button type="submit" class="btn">Submit Ticket</button>
-            `;
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                const title = document.getElementById('ticketTitle').value;
-                const description = document.getElementById('ticketDescription').value;
-                const priority = document.getElementById('ticketPriority').value;
-                const category = document.getElementById('ticketCategory').value;
-                fetch('/submit_ticket', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ Title: title, Description: description, Priority: priority, Category: category })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    loadTickets();
-                })
-                .catch(error => console.error('Error:', error));
-            });
-            document.getElementById('ticketsSection').appendChild(form);
-        });
-
+        // Borrow equipment function
         function borrowEquipment(equipmentId) {
             const quantity = prompt('Enter quantity to borrow:');
-            if (quantity) {
+            if (quantity && !isNaN(quantity) && parseInt(quantity) > 0) {
                 fetch('/borrow_equipment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -203,30 +230,98 @@
                 .then(data => {
                     alert(data.message);
                     loadEquipment();
+                    loadBorrowedEquipment();
                 })
                 .catch(error => console.error('Error:', error));
+            } else {
+                alert('Please enter a valid quantity.');
             }
         }
 
+        // Load borrowed equipment
+        function loadBorrowedEquipment() {
+            fetch('/borrowed_equipment')
+                .then(response => response.json())
+                .then(data => {
+                    const borrowedList = document.getElementById('borrowedEquipmentList').getElementsByTagName('tbody')[0];
+                    borrowedList.innerHTML = '';
+                    data.forEach(item => {
+                        const row = borrowedList.insertRow();
+                        row.insertCell(0).textContent = item.EquipmentName;
+                        row.insertCell(1).textContent = item.Quantity;
+                        row.insertCell(2).textContent = item.BorrowDate;
+                        const actionsCell = row.insertCell(3);
+                        const returnButton = document.createElement('button');
+                        returnButton.textContent = 'Return';
+                        returnButton.className = 'btn btn-small';
+                        returnButton.onclick = () => returnEquipment(item.BorrowingID);
+                        actionsCell.appendChild(returnButton);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Return equipment function
+        function returnEquipment(borrowingId) {
+            fetch('/return_equipment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ BorrowingID: borrowingId })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                loadBorrowedEquipment();
+                loadEquipment();
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Load knowledge base
+        function loadKnowledgeBase() {
+            fetch('/knowledge_base')
+                .then(response => response.json())
+                .then(data => {
+                    const knowledgeBaseList = document.getElementById('knowledgeBaseList').getElementsByTagName('tbody')[0];
+                    knowledgeBaseList.innerHTML = '';
+                    data.articles.forEach(article => {
+                        const row = knowledgeBaseList.insertRow();
+                        row.insertCell(0).textContent = article.Title;
+                        row.insertCell(1).textContent = article.Category;
+                        row.insertCell(2).textContent = article.AuthorName;
+                        const actionsCell = row.insertCell(3);
+                        const viewButton = document.createElement('button');
+                        viewButton.textContent = 'View';
+                        viewButton.className = 'btn btn-small';
+                        viewButton.onclick = () => viewArticle(article.ArticleID);
+                        actionsCell.appendChild(viewButton);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // View knowledge base article
         function viewArticle(articleId) {
             fetch(`/knowledge_base/${articleId}`)
                 .then(response => response.json())
                 .then(article => {
-                    const articleView = document.createElement('div');
-                    articleView.innerHTML = `
-                        <h3>${article.Title}</h3>
-                        <p><strong>Category:</strong> ${article.Category}</p>
-                        <p><strong>Author:</strong> ${article.AuthorName}</p>
-                        <p>${article.Content}</p>
-                        <button onclick="this.parentElement.remove()">Close</button>
-                    `;
-                    document.getElementById('knowledgeBaseSection').appendChild(articleView);
+                    alert(`Title: ${article.Title}\n\nCategory: ${article.Category}\n\nContent: ${article.Content}\n\nAuthor: ${article.AuthorName}`);
                 })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Logout function
+        function logout() {
+            fetch('/logout', { method: 'POST' })
+                .then(() => window.location.href = '/login.html')
                 .catch(error => console.error('Error:', error));
         }
 
         // Initial load
         loadTickets();
+        loadEquipment();
+        loadBorrowedEquipment();
+        loadKnowledgeBase();
     </script>
 </body>
 </html>

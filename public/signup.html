@@ -3,123 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signup Page - IT Support System</title>
+    <title>Sign Up - IT Support System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <div class="card signup-container">
-            <h2>Sign Up</h2>
+            <h2>Sign Up for IT Support System</h2>
             <form id="signupForm">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" placeholder="Enter username" required title="Username must be at least 5 characters long">
-                <div class="requirements">Username must be at least 5 characters long.</div>
-                
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" placeholder="Enter password" required title="Password must be at least 8 characters long and contain uppercase, lowercase, and number">
-                <div class="requirements">
-                    Password must be at least 8 characters long and contain:
-                    <ul>
-                        <li>At least one uppercase letter</li>
-                        <li>At least one lowercase letter</li>
-                        <li>At least one number</li>
-                    </ul>
+                <div>
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required minlength="5">
+                    <small>Username must be at least 5 characters long.</small>
                 </div>
-                
-                <label for="role">Role:</label>
-                <select id="role" name="role" required title="Please select a role">
-                    <option value="">Select Role</option>
-                    <option value="user">User</option>
-                    <option value="it_support">IT Support</option>
-                    <option value="admin">Admin</option>
-                </select>
-                
-                <button type="submit" class="btn" title="Sign up">Sign Up</button>
+                <div>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required minlength="8">
+                    <small>Password must be at least 8 characters long and contain uppercase, lowercase, and number.</small>
+                </div>
+                <div>
+                    <label for="role">Role:</label>
+                    <select id="role" name="role" required>
+                        <option value="">Select Role</option>
+                        <option value="user">User</option>
+                        <option value="it_support">IT Support</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn">Sign Up</button>
             </form>
             <p class="error-message" id="errorMessage"></p>
             <p class="success-message" id="successMessage"></p>
-            <p style="text-align: center;">Already have an account? <a href="login.html" title="Go to login page">Login</a></p>
+            <p>Already have an account? <a href="login.html">Login</a></p>
         </div>
     </div>
 
     <script>
-        const usernameInput = document.getElementById('username');
-        const passwordInput = document.getElementById('password');
-        const roleSelect = document.getElementById('role');
-        const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
-        const signupForm = document.getElementById('signupForm');
-
-        let usernameTimer;
-
-        usernameInput.addEventListener('input', function() {
-            clearTimeout(usernameTimer);
-            const username = this.value.trim();
-
-            if (username.length >= 5) {
-                usernameTimer = setTimeout(() => {
-                    fetch('/check-username', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ username }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.exists) {
-                            errorMessage.textContent = "Username already exists. Please choose a different one.";
-                        } else {
-                            errorMessage.textContent = "";
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                    });
-                }, 500);
-            } else {
-                errorMessage.textContent = "Username must be at least 5 characters long.";
-            }
-        });
-
-        passwordInput.addEventListener('input', function() {
-            const password = this.value;
-            if (password.length < 8) {
-                errorMessage.textContent = "Password must be at least 8 characters long.";
-            } else if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-                errorMessage.textContent = "Password must contain at least one uppercase letter, one lowercase letter, and one number.";
-            } else {
-                errorMessage.textContent = "";
-            }
-        });
-
-        signupForm.addEventListener('submit', function(e) {
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const role = document.getElementById('role').value;
             
-            const username = usernameInput.value.trim();
-            const password = passwordInput.value;
-            const role = roleSelect.value;
-
-            // Clear previous messages
-            errorMessage.textContent = "";
-            successMessage.textContent = "";
-
-            // Validation
-            if (username.length < 5) {
-                errorMessage.textContent = "Username must be at least 5 characters long.";
-                return;
-            }
-
-            if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
-                errorMessage.textContent = "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one number.";
-                return;
-            }
-
-            if (!role) {
-                errorMessage.textContent = "Please select a role.";
-                return;
-            }
-
             fetch('/signup', {
                 method: 'POST',
                 headers: {
@@ -127,22 +53,20 @@
                 },
                 body: JSON.stringify({ username, password, role }),
             })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(data => {
-                        throw new Error(data.message || 'Signup failed');
-                    });
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                successMessage.textContent = 'Signup successful! Redirecting to login page...';
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
+                if (data.message === "User created successfully.") {
+                    document.getElementById('successMessage').textContent = 'Signup successful! Redirecting to login page...';
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 2000);
+                } else {
+                    document.getElementById('errorMessage').textContent = data.message;
+                }
             })
             .catch(error => {
-                errorMessage.textContent = error.message || "Signup failed. Please try again.";
+                console.error('Error:', error);
+                document.getElementById('errorMessage').textContent = 'An error occurred. Please try again.';
             });
         });
     </script>
