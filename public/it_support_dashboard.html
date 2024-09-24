@@ -55,6 +55,9 @@
                     <label for="equipmentStock">Total Stock:</label>
                     <input type="number" id="equipmentStock" placeholder="Total Stock" required>
                     
+                    
+                    
+
                     <button type="submit" class="btn">Add Equipment</button>
                 </form>
             </div>
@@ -128,6 +131,7 @@
                     const ticketsList = document.getElementById('ticketsList').getElementsByTagName('tbody')[0];
                     ticketsList.innerHTML = '';
                     data.tickets.forEach(ticket => {
+                        console.log(ticket)
                         const row = ticketsList.insertRow();
                         row.insertCell(0).textContent = ticket.Title;
                         row.insertCell(1).textContent = ticket.Status;
@@ -184,7 +188,8 @@
             const equipmentData = {
                 Name: document.getElementById('equipmentName').value,
                 Description: document.getElementById('equipmentDescription').value,
-                TotalStock: document.getElementById('equipmentStock').value
+                TotalStock: document.getElementById('equipmentStock').value,
+                Category : "miscellaneous",
             };
 
             fetch('/add_equipment', {
@@ -231,6 +236,7 @@
             fetch(`/equipment/${equipmentId}`)
                 .then(response => response.json())
                 .then(equipment => {
+                    console.log(equipment)
                     const newStock = prompt(`Current Total Stock: ${equipment.TotalStock}\nEnter new total stock:`, equipment.TotalStock);
                     if (newStock && !isNaN(newStock) && parseInt(newStock) >= 0) {
                         updateEquipmentStock(equipmentId, parseInt(newStock));

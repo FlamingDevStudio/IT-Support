@@ -40,11 +40,53 @@
     </div>
 
     <script>
+        // Real-time username validation
+        document.getElementById('username').addEventListener('input', function(e) {
+            if (this.value.length < 5) {
+                this.setCustomValidity("Username must be at least 5 characters long.");
+            } else {
+                this.setCustomValidity("");
+            }
+        });
+
+        // Real-time password validation
+        document.getElementById('password').addEventListener('input', function(e) {
+            if (this.value.length < 8 || !/[A-Z]/.test(this.value) || !/[a-z]/.test(this.value) || !/[0-9]/.test(this.value)) {
+                this.setCustomValidity("Password must be at least 8 characters long and contain uppercase, lowercase, and number.");
+            } else {
+                this.setCustomValidity("");
+            }
+        });
+
         document.getElementById('signupForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const role = document.getElementById('role').value;
+            
+            // Client-side validation
+            if (username.length < 5) {
+                document.getElementById('errorMessage').textContent = "Username must be at least 5 characters long.";
+                return;
+            }
+            
+            if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+                document.getElementById('errorMessage').textContent = "Password must be at least 8 characters long and contain uppercase, lowercase, and number.";
+                return;
+            }
+            
+            if (!role) {
+                document.getElementById('errorMessage').textContent = "Please select a role.";
+                return;
+            }
+            
+            // Clear any previous error messages
+            document.getElementById('errorMessage').textContent = '';
+
+            // Disable submit button and show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Signing up...';
             
             fetch('/signup', {
                 method: 'POST',
@@ -67,6 +109,11 @@
             .catch(error => {
                 console.error('Error:', error);
                 document.getElementById('errorMessage').textContent = 'An error occurred. Please try again.';
+            })
+            .finally(() => {
+                // Re-enable submit button and restore original text
+                submitButton.disabled = false;
+                submitButton.textContent = 'Sign Up';
             });
         });
     </script>

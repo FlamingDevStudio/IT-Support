@@ -2,17 +2,31 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const session = require('express-session');
 const path = require('path');
+const fs = require('fs').promises;
 const app = express();
 const port = 3000;
 
 // Connect to SQLite database
-const db = new sqlite3.Database('./database.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
-    if (err) {
-        console.error('Error when connecting to the database:', err.message);
-    } else {
-        console.log('Connected to the SQLite database.');
-        initializeDatabase();
-    }
+let db;
+
+function connectToDatabase() {
+    return new Promise((resolve, reject) => {
+        db = new sqlite3.Database('./database.db', sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+            if (err) {
+                console.error('Error connecting to database:', err);
+                reject(err);
+            } else {
+                console.log('Connected to the SQLite database.');
+                resolve();
+            }
+        });
+    });
+}
+
+// Call this function when your server starts
+connectToDatabase().catch(err => {
+    console.error('Failed to connect to database:', err);
+    process.exit(1);
 });
 
 // Initialize database tables
@@ -132,20 +146,35 @@ app.post('/signup', (req, res) => {
     const { username, password, role } = req.body;
     const validRoles = ['admin', 'user', 'it_support'];
 
-    if (username.length < 5 || password.length < 8 || !validRoles.includes(role)) {
-        return res.status(400).json({ message: "Invalid input data." });
+    // Username validation
+    if (typeof username !== 'string' || username.length < 5) {
+        return res.status(400).json({ message: "Username must be at least 5 characters long." });
     }
 
+    // Password validation
+    if (typeof password !== 'string' || password.length < 8 || 
+        !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+        return res.status(400).json({ message: "Password must be at least 8 characters long and contain uppercase, lowercase, and number." });
+    }
+
+    // Role validation
+    if (!validRoles.includes(role)) {
+        return res.status(400).json({ message: "Invalid role." });
+    }
+
+    // Insert the new user into the database
     db.run('INSERT INTO Users(username, password, role) VALUES(?, ?, ?)', [username, password, role], function(err) {
         if (err) {
             console.error(err.message);
-            res.status(500).json({ message: "Failed to create new user." });
+            if (err.message.includes('UNIQUE constraint failed')) {
+                return res.status(409).json({ message: "Username already exists." });
+            }
+            return res.status(500).json({ message: "Failed to create new user." });
         } else {
             res.status(201).json({ message: "User created successfully." });
         }
     });
 });
-
 // Login route
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
@@ -322,11 +351,11 @@ app.get('/tickets/:TicketID', isLoggedIn, (req, res) => {
 // Update ticket route
 app.patch('/update_ticket/:TicketID', isLoggedIn, (req, res) => {
     const { TicketID } = req.params;
-    const { Title, Description, Priority, Status, Category, AssignedTo } = req.body;
+    const { Status } = req.body;
     const UpdatedAt = new Date().toISOString();
-
-    let query = 'UPDATE Tickets SET Title = ?, Description = ?, Priority = ?, Status = ?, Category = ?, AssignedTo = ?, UpdatedAt = ? WHERE TicketID = ?';
-    let params = [Title, Description, Priority, Status, Category, AssignedTo, UpdatedAt, TicketID];
+    console.log(Status)
+    let query = 'UPDATE Tickets SET Status = ? , UpdatedAt = ? WHERE TicketID = ?';
+    let params = [Status, UpdatedAt, TicketID];
 
     if (req.session.user.role === 'user') {
         query += ' AND UserID = ?';
@@ -347,6 +376,7 @@ app.patch('/update_ticket/:TicketID', isLoggedIn, (req, res) => {
     });
 });
 
+
 // Get equipment route
 app.get('/equipment', isLoggedIn, (req, res) => {
     db.all('SELECT * FROM Equipment', [], (err, equipment) => {
@@ -358,11 +388,41 @@ app.get('/equipment', isLoggedIn, (req, res) => {
         }
     });
 });
-
+// Get single equipment route
+app.get('/equipment/:EquipmentID', isLoggedIn, (req, res) => {
+    const { EquipmentID } = req.params;
+    db.get('SELECT * FROM Equipment WHERE EquipmentID = ?', [EquipmentID], (err, equipment) => {
+        if (err) {
+            console.error('Error fetching equipment:', err.message);
+            res.status(500).json({ message: "Failed to retrieve equipment." });
+        } else if (equipment) {
+            res.json(equipment);
+        } else {
+            res.status(404).json({ message: "Equipment not found." });
+        }
+    });
+});
+// Update equipment route
+app.patch('/update_equipment/:EquipmentID', isAdminOrIT, (req, res) => {
+    const { EquipmentID } = req.params;
+    const { TotalStock } = req.body;
+    db.run('UPDATE Equipment SET TotalStock = ? WHERE EquipmentID = ?', [TotalStock, EquipmentID], function(err) {
+        if (err) {
+            console.error('Error updating equipment:', err.message);
+            res.status(500).json({ message: "Failed to update equipment." });
+        } else {
+            if (this.changes > 0) {
+                res.json({ message: "Equipment updated successfully!" });
+            } else {
+                res.status(404).json({ message: "Equipment not found or you don't have permission to update." });
+            }
+        }
+    });
+});
 // Add equipment route
 app.post('/add_equipment', isAdminOrIT, (req, res) => {
     const { Name, Description, TotalStock, Category } = req.body;
-    db.run('INSERT INTO Equipment (Name, Description, TotalStock, AvailableStock, Category) VALUES (?, ?, ?, ?, ?)',
+    db.run('INSERT INTO Equipment (Name, Description, TotalStock, AvailableStock, Category) VALUES (?, ?, ?,?, ?)',
         [Name, Description, TotalStock, TotalStock, Category], function(err) {
         if (err) {
             console.error('Error adding equipment:', err.message);
@@ -372,6 +432,7 @@ app.post('/add_equipment', isAdminOrIT, (req, res) => {
         }
     });
 });
+
 
 // Borrow equipment route
 app.post('/borrow_equipment', isLoggedIn, (req, res) => {
@@ -471,7 +532,7 @@ app.post('/return_equipment', isLoggedIn, (req, res) => {
     });
 });
 
-// Get knowledge base articles route
+// Get all knowledge base articles
 app.get('/knowledge_base', isLoggedIn, (req, res) => {
     db.all('SELECT KnowledgeBase.*, Users.username AS AuthorName FROM KnowledgeBase INNER JOIN Users ON KnowledgeBase.CreatedBy = Users.user_id', [], (err, articles) => {
         if (err) {
@@ -483,7 +544,7 @@ app.get('/knowledge_base', isLoggedIn, (req, res) => {
     });
 });
 
-// Get single knowledge base article route
+// Get single knowledge base article
 app.get('/knowledge_base/:ArticleID', isLoggedIn, (req, res) => {
     const { ArticleID } = req.params;
     db.get('SELECT KnowledgeBase.*, Users.username AS AuthorName FROM KnowledgeBase INNER JOIN Users ON KnowledgeBase.CreatedBy = Users.user_id WHERE ArticleID = ?', [ArticleID], (err, article) => {
@@ -498,7 +559,7 @@ app.get('/knowledge_base/:ArticleID', isLoggedIn, (req, res) => {
     });
 });
 
-// Add knowledge base article route
+// Add knowledge base article
 app.post('/add_article', isAdminOrIT, (req, res) => {
     const { Title, Content, Category } = req.body;
     const CreatedBy = req.session.user.userId;
@@ -515,7 +576,7 @@ app.post('/add_article', isAdminOrIT, (req, res) => {
     });
 });
 
-// Update knowledge base article route
+// Update knowledge base article
 app.patch('/update_article/:ArticleID', isAdminOrIT, (req, res) => {
     const { ArticleID } = req.params;
     const { Title, Content, Category } = req.body;
@@ -536,7 +597,7 @@ app.patch('/update_article/:ArticleID', isAdminOrIT, (req, res) => {
     });
 });
 
-// Delete knowledge base article route
+// Delete knowledge base article
 app.delete('/delete_article/:ArticleID', isAdminOrIT, (req, res) => {
     const { ArticleID } = req.params;
 
@@ -787,11 +848,21 @@ app.patch('/update_user_info', isLoggedIn, (req, res) => {
     let params = [];
     let updates = [];
 
+    // Username validation
     if (username) {
+        if (typeof username !== 'string' || username.length < 5) {
+            return res.status(400).json({ message: "Username must be at least 5 characters long." });
+        }
         updates.push('username = ?');
         params.push(username);
     }
+
+    // Password validation
     if (password) {
+        if (typeof password !== 'string' || password.length < 8 || 
+            !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+            return res.status(400).json({ message: "Password must be at least 8 characters long and contain uppercase, lowercase, and number." });
+        }
         updates.push('password = ?');
         params.push(password);
     }
@@ -815,6 +886,155 @@ app.patch('/update_user_info', isLoggedIn, (req, res) => {
             res.json({ message: "User information updated successfully." });
         }
     });
+});
+
+// Function to create a backup of the database
+async function createBackup() {
+    const backupDir = path.join(__dirname, 'backups');
+    
+    try {
+        await fs.access(backupDir);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            await fs.mkdir(backupDir, { recursive: true });
+        } else {
+            throw error;
+        }
+    }
+
+    const now = new Date();
+    const timestamp = now.toISOString().replace(/[:.]/g, '-');
+    const backupPath = path.join(backupDir, `backup-${timestamp}.db`);
+    
+    try {
+        await fs.copyFile('./database.db', backupPath);
+        console.log('Backup created at:', backupPath);
+        return backupPath;
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        throw error;
+    }
+}
+async function listBackups() {
+    const backupDir = path.join(__dirname, 'backups');
+    console.log('Backup directory:', backupDir);
+    
+    try {
+        await fs.access(backupDir);
+        console.log('Backup directory exists');
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            console.log('Backup directory does not exist, creating it');
+            await fs.mkdir(backupDir, { recursive: true });
+            console.log('Backups directory created');
+            return [];
+        } else {
+            console.error('Error accessing backup directory:', error);
+            throw error;
+        }
+    }
+
+    try {
+        const files = await fs.readdir(backupDir);
+        console.log('Files in backup directory:', files);
+        
+        const backups = files
+            .filter(file => file.startsWith('backup-') && file.endsWith('.db'))
+            .map(file => {
+                try {
+                    // Extract date parts from filename
+                    const [datePart, timePart] = file.slice(7, -3).split('T');
+                    const [year, month, day] = datePart.split('-');
+                    const [hour, minute, second, millisecond] = timePart.split('-');
+                    
+                    // Construct a valid date string
+                    const dateString = `${year}-${month}-${day}T${hour}:${minute}:${second}.${millisecond}Z`;
+                    
+                    return {
+                        name: file,
+                        path: path.join(backupDir, file),
+                        timestamp: dateString
+                    };
+                } catch (error) {
+                    console.error(`Error parsing date for file ${file}:`, error);
+                    return {
+                        name: file,
+                        path: path.join(backupDir, file),
+                        timestamp: 'Invalid Date'
+                    };
+                }
+            })
+            .filter(backup => backup.timestamp !== 'Invalid Date')
+            .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        console.log('Processed backups:', backups);
+        return backups;
+    } catch (error) {
+        console.error('Error reading backup directory:', error);
+        throw error;
+    }
+}
+// Admin route to create a backup
+app.post('/admin/create-backup', isAdmin, (req, res) => {
+    try {
+        const backupPath = createBackup();
+        res.json({ message: "Backup created successfully", path: backupPath });
+    } catch (error) {
+        console.error('Error creating backup:', error);
+        res.status(500).json({ message: "Failed to create backup", error: error.message });
+    }
+});
+
+app.get('/admin/list-backups', isAdmin, async (req, res) => {
+    console.log('List backups route hit');
+    try {
+        const backups = await listBackups();
+        console.log('Backups retrieved:', backups);
+        res.json({ backups: backups });
+    } catch (error) {
+        console.error('Error listing backups:', error);
+        res.status(500).json({ message: "Failed to list backups", error: error.message });
+    }
+});
+
+// Admin route to rollback to a specific backup
+app.post('/admin/rollback', isAdmin, async (req, res) => {
+    const { backupName } = req.body;
+    const backupPath = path.join(__dirname, 'backups', backupName);
+
+    try {
+        await fs.access(backupPath);
+    } catch (error) {
+        return res.status(404).json({ message: "Backup not found" });
+    }
+
+    try {
+        // Close the current database connection
+        await new Promise((resolve, reject) => {
+            db.close((err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // Replace the current database with the backup
+        await fs.copyFile(backupPath, './database.db');
+
+        // Reconnect to the database
+        await connectToDatabase();
+        
+        res.json({ message: "Rollback successful" });
+    } catch (error) {
+        console.error('Error during rollback:', error);
+        res.status(500).json({ message: "Rollback failed", error: error.message });
+        
+        // Attempt to reconnect to the original database if rollback fails
+        try {
+            await connectToDatabase();
+        } catch (reconnectError) {
+            console.error('Failed to reconnect to database after rollback error:', reconnectError);
+        }
+    }
 });
 // Start the server
 app.listen(port, () => {
